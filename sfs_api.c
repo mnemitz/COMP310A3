@@ -33,6 +33,16 @@ typedef struct _superblock_t
 /*  Global inode_t array for writing purposes */
 inode_t nodes[NUM_INODES];
 
+typedef struct _FDTentry_t
+{
+	
+}FDTentry_t;
+
+typedef struct _openFDT
+{
+	FDTentry_t entries[NUM_FDT_ENTRIES];
+}openFDT;
+
 void mkssfs(int fresh)
 {
 	/* First we initialize the super block, but give it a block's worth of memory */
@@ -72,7 +82,21 @@ void mkssfs(int fresh)
 	write_blocks(0, 1, sup);
 	free(sup);
 
-	
+	/* Next we can initialize the Free Bit Map and Write Mask */
+
+	block_t* fbm = malloc(sizeof(block_t));
+	block_t* wm = malloc(sizeof(block_t));
+
+	/*  Initialize all their buffers' bits to 1, since initially all the tracked blocks are unused */
+	memset(fbm->buffer, 1, BLOCK_SIZE);
+	memset(wm->buffer, 1, BLOCK_SIZE);
+
+	/*Questions:
+
+		- Should I change the initializations to take into account the inodes which will be written initially?
+		- Will the inodes be written in blocks directly following the WM, and then their disk indeces will be tracked by the j-nodes?
+			... or will they be written as file contents using the file writing method? (guessing not)
+		- Is it unneccessary for me to zero out the buffers I get from malloc()?  */
 
 }
 int ssfs_fopen(char *name){
