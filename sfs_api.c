@@ -53,20 +53,6 @@ void mkssfs(int fresh)
 	sup -> nblocks = NUM_BLOCKS
 	sup -> numinodes = NUM_INODES;
 	(sup -> jroot).size = 0;
-
-	/* Need to make sure all the pointers in the root node are 0 */
-	int i,j;
-	for(i=0; i<NUM_DIRECT_PTRS; i++)
-	{
-		(sup -> jroot).direct_ptrs[i] = 0;
-	
-		/* ... as well as the shadows' pointers*/
-		for(j=0;j<4;j++)
-		{
-			(sup -> shadows[j]).direct_ptrs[i] = 0;
-		}
-	}
-	(sup -> jroot).indirect_ptr = 0;
 	
 	/*  Now the initialized superblock is clean and ready, can now init the disk and write it */
 	
@@ -90,13 +76,26 @@ void mkssfs(int fresh)
 	/*  Initialize all their buffers' bits to 1, since initially all the tracked blocks are unused */
 	memset(fbm->buffer, 1, BLOCK_SIZE);
 	memset(wm->buffer, 1, BLOCK_SIZE);
+	
 
-	/*Questions:
+	/* Now write the FBM and WM to the disk */
+	write_blocks(1, 1, fbm);
+	write_blocks(2, 1, wm);
 
-		- Should I change the initializations to take into account the inodes which will be written initially?
-		- Will the inodes be written in blocks directly following the WM, and then their disk indeces will be tracked by the j-nodes?
-			... or will they be written as file contents using the file writing method? (guessing not)
-		- Is it unneccessary for me to zero out the buffers I get from malloc()?  */
+
+	/* Now the 200 inodes need to be written. */
+
+	inode_t* upd_jroot = malloc(sizeof(inode_t));	// this will be the new j-node which will actually point to the right places	
+
+	int num_blocks_for_inodes = ((int)sizeof(inode_t)*NUM_INODES)/BLOCK_SIZE;
+
+	int i, waddr;
+	for(i=0, waddr=3; i<num_blocks_for_inodes; i++, waddr++)
+	{
+		write_blocks(waddr, 1, nodes[16*i]);	// write the 16 inodes for the current block
+		upd_jroot -> direct_ptrs[i] = waddr;
+	}
+
 
 }
 int ssfs_fopen(char *name){
