@@ -5,6 +5,8 @@
 #define NUM_BLOCKS 1024
 #define NUM_INODES 200
 #define NUM_DIRECT_PTRS 14
+#define MAX_FDT_ENTRIES 4
+#define MAX_NAMESIZE 16
 
 typedef struct _inode_t
 {
@@ -35,13 +37,21 @@ inode_t nodes[NUM_INODES];
 
 typedef struct _FDTentry_t
 {
+	int inode_num;
+	char* readptr, writeptr;
 	
 }FDTentry_t;
 
-typedef struct _openFDT
+typedef struct _FDT_t
 {
-	FDTentry_t entries[NUM_FDT_ENTRIES];
-}openFDT;
+	int num_openfiles;	
+	FDTentry_t entries[MAX_FDT_ENTRIES];
+
+}FDT_t;
+
+/* Global instance of file descriptor table */
+
+FDT_t openFileTable;
 
 void mkssfs(int fresh)
 {
@@ -52,9 +62,8 @@ void mkssfs(int fresh)
 	sup -> bsize = BLOCK_SIZE;
 	sup -> nblocks = NUM_BLOCKS
 	sup -> numinodes = NUM_INODES;
-	(sup -> jroot).size = 0;
 	
-	/*  Now the initialized superblock is clean and ready, can now init the disk and write it */
+	/* The superblock is ready except the jnode still needs more information, so we will wait til the end to write the superblock so it is fully consistent */
 	
 	if(fresh)
 	{
@@ -65,8 +74,6 @@ void mkssfs(int fresh)
 		init_disk("my.disk", BLOCK_SIZE, NUM_BLOCKS);
 	}
 	
-	write_blocks(0, 1, sup);
-	free(sup);
 
 	/* Next we can initialize the Free Bit Map and Write Mask */
 
@@ -77,29 +84,99 @@ void mkssfs(int fresh)
 	memset(fbm->buffer, 1, BLOCK_SIZE);
 	memset(wm->buffer, 1, BLOCK_SIZE);
 	
+	/* Except, we need to take into account the blocks for the inodes about to be written. Need to compute how many blocks this will be */
+	int num_blocks_for_inodes = ((int)sizeof(inode_t)*NUM_INODES)/BLOCK_SIZE;
+	int num_inodes_per_block = BLOCK_SIZE / sizeof(inode_t);
 
-	/* Now write the FBM and WM to the disk */
+	/*  Now that we know the number of blocks needed for all the inodes, we can shift the FBM and WM accordingly */
+	/*The convention here is that the bitmaps are read left to right, so a shift to the right makes the next sequential block used/readonly*/
+	
+	*fbm = *fbm >> num_blocks_for_inodes + 1;
+	*wm = *wm >> num_blocks_for_inodes + 1;
+	// mark each inode data block, plus one extra block for the root dir datablock, then write them!
 	write_blocks(1, 1, fbm);
 	write_blocks(2, 1, wm);
+	free(fbm);
+	free(wm);
 
+	/* Now the 200 inodes need to be written. First we'll initialize their size fields as needed*/
 
-	/* Now the 200 inodes need to be written. */
+	nodes[0].size = 0;	// initialize the first node to be used with size 0 (for the root directory)
+	int i;
+	for(i = 1; i < NUM_INODES; i++)
+	{
+		nodes[i].size = -1;	// initialize the rest to be empty
+		
+	}
 
-	inode_t* upd_jroot = malloc(sizeof(inode_t));	// this will be the new j-node which will actually point to the right places	
-
-	int num_blocks_for_inodes = ((int)sizeof(inode_t)*NUM_INODES)/BLOCK_SIZE;
+	inode_t* init_jroot = malloc(sizeof(inode_t));	// this will be the new j-node which will actually point to the right places	
 
 	int i, waddr;
 	for(i=0, waddr=3; i<num_blocks_for_inodes; i++, waddr++)
 	{
-		write_blocks(waddr, 1, nodes[16*i]);	// write the 16 inodes for the current block
-		upd_jroot -> direct_ptrs[i] = waddr;
+		write_blocks(waddr, 1, nodes[num_inodes_per_block*i]);	 // write the 16 inodes for the current block
+		init_jroot -> direct_ptrs[i] = waddr;			// add its index to the right pointer of the jnode
 	}
 
 
+	// TODO: root directory data block
+	block_t* rootdir = malloc(sizeof(block_t));
+
+
+	// write_blocks(waddr, 1, rootdir);	is the rootdir data block just empty?? how does that work??
+
+	// now we need to update the superblock's jnode, and write the superblock 
+
+	memcpy(sup -> jroot, init_jroot);
+	free(init_jroot);
+	write_blocks(0, 1, sup);
+	free(sup);
+
+	// finally, initialize all entries in the FDT to have inode numbers of -1, to indicate their availability too
+	for(i=0; i<MAX_NUM_FILES; i++)
+	{
+		openFileTable[i].inode_num = -1;
+	}
+
+	return 0;
+	
 }
 int ssfs_fopen(char *name){
-    return 0;
+    
+	// create an entry in the open file descriptor table for this file
+	// 	- find the inode corresponding to the file, if none exists, give it one
+	//	- what is the inode number exactly? is it the index of the direct pointer which points to that inode?
+	//		...anyway whatever it is, put it as the inode number field
+	//	- then set the read pointer to point to the first byte of the first block (or however the beginning is addressable),
+	//		... and the write pointer to the end of the file (ask about whether it's block or byte indexing)
+	// once that's all set, just return the index of this entry in the table. It is the file descriptor, for use in further operations.
+
+	int i;
+	for(i=0; i<MAX_NUM_FILES; i++)
+	{
+		if (openFileTable[i].inode_num == -1)
+		{
+			// found free slot in table
+			break;		
+		}
+	}
+
+	if(i == MAX_NUM_FILES)
+	{
+		printf("E:\t Too many open files. Please close one.\n");
+		return -1;
+	}
+	else
+	{
+		FDTentry_t* filentry = malloc(sizeof(FDTentry_t));
+		filentry->inode_num = // TODO: get inode number
+		filentry->read_ptr = // TODO: get read pointer
+		filentry->write_ptr = // TODO: get write pointer
+		memcpy(*openFileTable[i], filentry);
+	}
+	
+	return i;
+
 }
 int ssfs_fclose(int fileID){
     return 0;
@@ -119,3 +196,7 @@ int ssfs_fread(int fileID, char *buf, int length){
 int ssfs_remove(char *file){
     return 0;
 }
+int ssfs_commit(){
+    return 0;
+}
+int ssfs_restore(
