@@ -92,14 +92,14 @@ int close_disk();</string>
       <string>x</string>
       <void method="set">
        <object idref="Rectangle2D$Double2"/>
-       <double>10.0</double>
+       <double>430.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
       <string>y</string>
       <void method="set">
        <object idref="Rectangle2D$Double2"/>
-       <double>250.0</double>
+       <double>500.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
@@ -122,26 +122,32 @@ int close_disk();</string>
   </void>
   <void method="restoreRootNode">
    <object class="ca.mcgill.cs.stg.jetuml.graph.ClassNode" id="ClassNode3">
+    <void property="attributes">
+     <void property="text">
+      <string>FDTentry_t openfiles[16];
+inode_t nodes[200];</string>
+     </void>
+    </void>
     <void id="Rectangle2D$Double3" property="bounds">
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
       <string>x</string>
       <void method="set">
        <object idref="Rectangle2D$Double3"/>
-       <double>320.0</double>
+       <double>460.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
       <string>y</string>
       <void method="set">
        <object idref="Rectangle2D$Double3"/>
-       <double>250.0</double>
+       <double>260.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
       <string>width</string>
       <void method="set">
        <object idref="Rectangle2D$Double3"/>
-       <double>160.0</double>
+       <double>180.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
@@ -157,9 +163,9 @@ int close_disk();</string>
     </void>
     <void property="methods">
      <void property="text">
-      <string>mkssfs(int fresh);
-sfs_fopen(char* name);
-sfs_fclose(int fileID);</string>
+      <string>void mkssfs(int fresh);
+int sfs_fopen(char* name);
+int sfs_fclose(int fileID);</string>
      </void>
     </void>
     <void property="name">
@@ -173,9 +179,7 @@ sfs_fclose(int fileID);</string>
    <object class="ca.mcgill.cs.stg.jetuml.graph.ClassNode" id="ClassNode4">
     <void property="attributes">
      <void property="text">
-      <string>&lt;filename_1, fileID_1&gt; ,
- ... , 
-&lt;filename_n, fileID_n&gt;</string>
+      <string>FDTentry_1, ..., FDTentry_16</string>
      </void>
     </void>
     <void id="Rectangle2D$Double4" property="bounds">
@@ -183,28 +187,21 @@ sfs_fclose(int fileID);</string>
       <string>x</string>
       <void method="set">
        <object idref="Rectangle2D$Double4"/>
-       <double>20.0</double>
+       <double>670.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
       <string>y</string>
       <void method="set">
        <object idref="Rectangle2D$Double4"/>
-       <double>330.0</double>
+       <double>280.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
       <string>width</string>
       <void method="set">
        <object idref="Rectangle2D$Double4"/>
-       <double>160.0</double>
-      </void>
-     </void>
-     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
-      <string>height</string>
-      <void method="set">
-       <object idref="Rectangle2D$Double4"/>
-       <double>100.0</double>
+       <double>200.0</double>
       </void>
      </void>
     </void>
@@ -213,7 +210,7 @@ sfs_fclose(int fileID);</string>
     </void>
     <void property="name">
      <void property="text">
-      <string>Open FDT</string>
+      <string>FDTentry_t openFiles[16]</string>
      </void>
     </void>
    </object>
@@ -225,14 +222,14 @@ sfs_fclose(int fileID);</string>
       <string>x</string>
       <void method="set">
        <object idref="Rectangle2D$Double5"/>
-       <double>570.0</double>
+       <double>780.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
       <string>y</string>
       <void method="set">
        <object idref="Rectangle2D$Double5"/>
-       <double>230.0</double>
+       <double>110.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
@@ -259,7 +256,7 @@ sfs_fclose(int fileID);</string>
 i.e. the superblock, FBM/WM, and blocks containing 
 the i-nodes. It will leave a single inode with size 0 on 
 the disk serving as a pointer to the root directory,
-marked as used and read-only in the FBM/WM.
+marked as used in the FBM.
 The remaining 199 inodes will have size -1, and will 
 be writeable. It will also initialize the open file desc. table.</string>
      </void>
@@ -273,14 +270,14 @@ be writeable. It will also initialize the open file desc. table.</string>
       <string>x</string>
       <void method="set">
        <object idref="Rectangle2D$Double6"/>
-       <double>1010.0</double>
+       <double>930.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
       <string>y</string>
       <void method="set">
        <object idref="Rectangle2D$Double6"/>
-       <double>260.0</double>
+       <double>290.0</double>
       </void>
      </void>
      <void class="java.awt.geom.Rectangle2D$Double" method="getField">
@@ -294,7 +291,7 @@ be writeable. It will also initialize the open file desc. table.</string>
       <string>height</string>
       <void method="set">
        <object idref="Rectangle2D$Double6"/>
-       <double>80.0</double>
+       <double>120.0</double>
       </void>
      </void>
     </void>
@@ -303,11 +300,326 @@ be writeable. It will also initialize the open file desc. table.</string>
     </void>
     <void property="text">
      <void property="text">
-      <string>sfs_fopen(char* filename) will set the reading and writing pointers
-for the file &quot;filename&quot;. It will set the read pointer to the beginning 
-of the file on the disk (i.e. the first byte of the first data block
-pointed to by the first inode), and the write pointer to the end of 
-the file (the )</string>
+      <string>sfs_fopen(char* filename) will first read the root directory 
+looking for the specified file name. If found, it will go to its 
+specified i-node number, setting its read pointer to point
+to the BEGINNING (i.e. 0, the 1st byte of its 1st block), and 
+the write pointer to the END (the byte after the one with the same
+number as the file size). Finally will update the Open FDT 
+with an entry specifying all of these values, returning its index.</string>
+     </void>
+    </void>
+   </object>
+  </void>
+  <void method="restoreRootNode">
+   <object class="ca.mcgill.cs.stg.jetuml.graph.ClassNode" id="ClassNode5">
+    <void property="attributes">
+     <void property="text">
+      <string>typedef struct, size 64 bytes</string>
+     </void>
+    </void>
+    <void id="Rectangle2D$Double7" property="bounds">
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>x</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double7"/>
+       <double>440.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>y</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double7"/>
+       <double>670.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>width</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double7"/>
+       <double>200.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>height</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double7"/>
+       <double>100.0</double>
+      </void>
+     </void>
+    </void>
+    <void property="bounds">
+     <object idref="Rectangle2D$Double7"/>
+    </void>
+    <void property="methods">
+     <void property="text">
+      <string>int size;
+int direct_ptrs[14];
+int indirect ptr;</string>
+     </void>
+    </void>
+    <void property="name">
+     <void property="text">
+      <string>inode_t</string>
+     </void>
+    </void>
+   </object>
+  </void>
+  <void method="restoreRootNode">
+   <object class="ca.mcgill.cs.stg.jetuml.graph.ClassNode" id="ClassNode6">
+    <void property="attributes">
+     <void property="text">
+      <string>typedef struct, size 6 bytes</string>
+     </void>
+    </void>
+    <void id="Rectangle2D$Double8" property="bounds">
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>x</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double8"/>
+       <double>660.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>y</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double8"/>
+       <double>400.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>width</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double8"/>
+       <double>220.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>height</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double8"/>
+       <double>80.0</double>
+      </void>
+     </void>
+    </void>
+    <void property="bounds">
+     <object idref="Rectangle2D$Double8"/>
+    </void>
+    <void property="methods">
+     <void property="text">
+      <string>int inode_number;
+char* readpointer, writepointer;</string>
+     </void>
+    </void>
+    <void property="name">
+     <void property="text">
+      <string>FDTentry_t</string>
+     </void>
+    </void>
+   </object>
+  </void>
+  <void method="restoreRootNode">
+   <object class="ca.mcgill.cs.stg.jetuml.graph.ClassNode" id="ClassNode7">
+    <void property="attributes">
+     <void property="text">
+      <string>typedef struct, size = 1024 bytes</string>
+     </void>
+    </void>
+    <void id="Rectangle2D$Double9" property="bounds">
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>x</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double9"/>
+       <double>10.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>y</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double9"/>
+       <double>300.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>width</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double9"/>
+       <double>220.0</double>
+      </void>
+     </void>
+    </void>
+    <void property="bounds">
+     <object idref="Rectangle2D$Double9"/>
+    </void>
+    <void property="methods">
+     <void property="text">
+      <string>char buffer[1024];</string>
+     </void>
+    </void>
+    <void property="name">
+     <void property="text">
+      <string>block_t</string>
+     </void>
+    </void>
+   </object>
+  </void>
+  <void method="restoreRootNode">
+   <object class="ca.mcgill.cs.stg.jetuml.graph.ClassNode" id="ClassNode8">
+    <void property="attributes">
+     <void property="text">
+      <string>typedef struct, size = 336 bytes</string>
+     </void>
+    </void>
+    <void id="Rectangle2D$Double10" property="bounds">
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>x</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double10"/>
+       <double>10.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>y</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double10"/>
+       <double>380.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>width</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double10"/>
+       <double>220.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>height</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double10"/>
+       <double>140.0</double>
+      </void>
+     </void>
+    </void>
+    <void property="bounds">
+     <object idref="Rectangle2D$Double10"/>
+    </void>
+    <void property="methods">
+     <void property="text">
+      <string>char magic[4];
+int blocksize;
+int numberBlocks;
+int numberInodes;
+inode_t jnodeRoot;
+inode_t shadow_jnodes[4];</string>
+     </void>
+    </void>
+    <void property="name">
+     <void property="text">
+      <string>superblock_t</string>
+     </void>
+    </void>
+   </object>
+  </void>
+  <void method="restoreRootNode">
+   <object class="ca.mcgill.cs.stg.jetuml.graph.NoteNode" id="NoteNode2">
+    <void id="Rectangle2D$Double11" property="bounds">
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>x</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double11"/>
+       <double>10.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>y</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double11"/>
+       <double>230.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>width</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double11"/>
+       <double>260.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>height</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double11"/>
+       <double>60.0</double>
+      </void>
+     </void>
+    </void>
+    <void property="bounds">
+     <object idref="Rectangle2D$Double11"/>
+    </void>
+    <void property="text">
+     <void property="text">
+      <string>Block and superblock types. 
+While the superblock is smaller,
+the implementation gives it a full
+block&apos;s worth  of space (most unused)</string>
+     </void>
+    </void>
+   </object>
+  </void>
+  <void method="restoreRootNode">
+   <object class="ca.mcgill.cs.stg.jetuml.graph.NoteNode" id="NoteNode3">
+    <void id="Rectangle2D$Double12" property="bounds">
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>x</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double12"/>
+       <double>1030.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>y</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double12"/>
+       <double>500.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>width</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double12"/>
+       <double>460.0</double>
+      </void>
+     </void>
+     <void class="java.awt.geom.Rectangle2D$Double" method="getField">
+      <string>height</string>
+      <void method="set">
+       <object idref="Rectangle2D$Double12"/>
+       <double>240.0</double>
+      </void>
+     </void>
+    </void>
+    <void property="bounds">
+     <object idref="Rectangle2D$Double12"/>
+    </void>
+    <void property="text">
+     <void property="text">
+      <string>ssfs_fwrite() will use the i-node number and the j-node
+to find the blocks which must be altered for the write. 
+The length of the given buffer effects how many blocks
+need to be updated, as does the position of the write pointer.
+---
+Basically it will start by finding the block where the write
+pointer is currently pointing. If the whole buffer can fit in that block,
+then only that block is modified and written back. Otherwise,
+the number of required blocks is calculated, new blocks are 
+created to hold the buffer contents, and are then written
+to the disk, updating the file&apos;s inode so that its direct pointers
+point to those new blocks. The write pointer is also incremented
+by the total size of the buffer.
+
+---
+
+(the &apos;new blocks&apos; need to not overwrite other files. I&apos;m not entirely sure
+how to guarantee this)</string>
      </void>
     </void>
    </object>
@@ -323,14 +635,40 @@ the file (the )</string>
    <object idref="ClassNode1"/>
   </void>
   <void method="restoreEdge">
-   <object class="ca.mcgill.cs.stg.jetuml.graph.DependencyEdge"/>
+   <object class="ca.mcgill.cs.stg.jetuml.graph.AggregationEdge">
+    <void property="middleLabel">
+     <string>1</string>
+    </void>
+   </object>
+   <object idref="ClassNode3"/>
+   <object idref="ClassNode2"/>
+  </void>
+  <void method="restoreEdge">
+   <object class="ca.mcgill.cs.stg.jetuml.graph.AggregationEdge">
+    <void property="middleLabel">
+     <string>1</string>
+    </void>
+   </object>
    <object idref="ClassNode3"/>
    <object idref="ClassNode4"/>
   </void>
   <void method="restoreEdge">
-   <object class="ca.mcgill.cs.stg.jetuml.graph.DependencyEdge"/>
-   <object idref="ClassNode3"/>
+   <object class="ca.mcgill.cs.stg.jetuml.graph.AggregationEdge">
+    <void property="middleLabel">
+     <string>200</string>
+    </void>
+   </object>
    <object idref="ClassNode2"/>
+   <object idref="ClassNode5"/>
+  </void>
+  <void method="restoreEdge">
+   <object class="ca.mcgill.cs.stg.jetuml.graph.AggregationEdge">
+    <void property="middleLabel">
+     <string>16</string>
+    </void>
+   </object>
+   <object idref="ClassNode4"/>
+   <object idref="ClassNode6"/>
   </void>
  </object>
 </java>

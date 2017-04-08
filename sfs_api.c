@@ -41,12 +41,6 @@ typedef struct _FDTentry_t
 	
 }FDTentry_t;
 
-typedef struct _FDT_t
-{
-	int num_openfiles;	
-	FDTentry_t entries[MAX_FDT_ENTRIES];
-
-}FDT_t;
 
 typedef struct _directory_entry_t
 {
@@ -62,7 +56,7 @@ typedef struct _directory_t
 
 /* Global instance of file descriptor table, inodes, and root directory block */
 
-FDT_t openFileTable;
+FDTentry_t openFileTable[16];
 inode_t nodes[NUM_INODES];
 block_t cachedRoot;
 int rootAddr;
@@ -240,6 +234,17 @@ int ssfs_fwseek(int fileID, int loc){
     return 0;
 }
 int ssfs_fwrite(int fileID, char *buf, int length){
+
+	/*
+		Look at the write pointer for the entry in the file table at this ID index
+		Read the block with this file's inode in it	(accessible from the (inode no. / 16)-th direct pointer in the j-node)
+		get the length of the buffer to be written ( strlen(buf) )
+			(this will determine how many blocks we need to update)
+
+		number_of_blocks_needed_for_write = strlen(buf) / BLOCK_SIZE (1024)
+
+	*/
+
     return 0;
 }
 int ssfs_fread(int fileID, char *buf, int length){
