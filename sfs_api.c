@@ -20,7 +20,7 @@ typedef struct _inode_t
 
 typedef struct _block_t
 {
-	char buffer[BLOCK_SIZE];
+	void* buffer[BLOCK_SIZE];
 }block_t;
 
 
@@ -37,7 +37,8 @@ typedef struct _superblock_t
 typedef struct _FDTentry_t
 {
 	int inode_num;
-	char* readptr, writeptr;
+	int readptr;
+	int writeptr;
 	
 }FDTentry_t;
 
@@ -61,11 +62,14 @@ inode_t nodes[NUM_INODES];
 block_t cachedRoot;
 int rootAddr;
 
+
+int diskAddressCount;	// after the system is initialized, this ensures that new writes to the disk don't overwrite old blocks
+
 void mkssfs(int fresh)
 {
 	/* First we initialize the super block, but give it a block's worth of memory */
 
-	superblock_t* sup = malloc(sizeof(block_t));
+	superblock_t* sup = calloc(1,sizeof(block_t));
 	strcpy(sup -> magic, "MYFS");
 	sup -> bsize = BLOCK_SIZE;
 	sup -> nblocks = NUM_BLOCKS;
@@ -82,13 +86,16 @@ void mkssfs(int fresh)
 		init_disk("my.disk", BLOCK_SIZE, NUM_BLOCKS);
 	}
 	
+	printf("disk initialized\n");
 
 	/* Next we can initialize the Free Bit Map */
 
-	block_t* fbm = malloc(sizeof(block_t));
+	block_t* fbm = calloc(1,sizeof(block_t));
 
 	/*  Initialize all its buffers' bits to 1, since initially all the tracked blocks are unused */
 	memset(fbm->buffer, 256, BLOCK_SIZE);
+	
+	printf("fbm set up\n");
 	
 	/* Except, we need to take into account the blocks for the inodes about to be written. Need to compute how many blocks this will be */
 	int num_blocks_for_inodes = ((int)sizeof(inode_t)*NUM_INODES)/BLOCK_SIZE + 1;
@@ -96,13 +103,20 @@ void mkssfs(int fresh)
 
 	int num_bytes_to_zero = (num_blocks_for_inodes + 1) / 8;	// added one for the root dir data block
 	int num_rem_bits = (num_blocks_for_inodes + 1) % 8;
+	unsigned char trailing_byte = 0xFF >> num_rem_bits;
 
 	/*  Now that we know the number of blocks needed for all the inodes, we can adjust the FBM accordingly 
 		Basically here, we are just setting the right number of bytes to zero, and shifting the next byte by the number of remaining bits which must be zero.
 		Then, just write the block
 	*/
+
+	printf("Number of bytes to zero:\t%d, \n number of trailing bits:\t%d\nnow attemptying to modify FBM\n", num_bytes_to_zero, num_rem_bits);
+
 	memset(fbm->buffer, 0, num_bytes_to_zero);
-	fbm->buffer[num_bytes_to_zero + 1] = fbm->buffer[num_bytes_to_zero + 1] >> num_rem_bits;
+	memcpy(fbm->buffer + (num_bytes_to_zero + 1), &trailing_byte, sizeof(unsigned char));
+	
+	printf("FBM modified, now writing to disk\n");
+
 	write_blocks(1, 1, fbm);
 	free(fbm);
 
@@ -116,7 +130,7 @@ void mkssfs(int fresh)
 		
 	}
 
-	inode_t* init_jroot = malloc(sizeof(inode_t));	// this will be the new j-node which will actually point to the right places	
+	inode_t* init_jroot = calloc(1,sizeof(inode_t));	// this will be the new j-node which will actually point to the right places	
 
 	int waddr;
 	for(i=0, waddr=2; i<num_blocks_for_inodes; i++, waddr++)
@@ -126,9 +140,8 @@ void mkssfs(int fresh)
 	}
 
 
-	// Initialize the root directory data block, zero it out for safety, and give it a directory struct
-	block_t* rootdir = malloc(sizeof(block_t));
-	memset(rootdir->buffer, 0, BLOCK_SIZE);
+	// Initialize the root directory data block
+	block_t* rootdir = calloc(1,sizeof(block_t));
 	
 	directory_t* rootLookupStruct = malloc(sizeof(directory_t));
 	for(i=0; i<200; i++)
@@ -139,9 +152,12 @@ void mkssfs(int fresh)
 	
 
 	// Copy this lookup table construction into what will be the root directory data block. Then, 
+	printf("about to try copying the directory structure into the rootdir data block\n");
 	memcpy(rootdir->buffer, rootLookupStruct, sizeof(directory_t));
+	printf("...this was successful\n");
 
 	write_blocks(waddr, 1, rootdir);
+	printf("managed to write the root directory data block\n");
 	free(rootdir);
 	free(rootLookupStruct);
 	rootAddr = waddr;
@@ -149,15 +165,19 @@ void mkssfs(int fresh)
 	// now we need to update the superblock's jnode, and write the superblock 
 
 	memcpy(&(sup -> jroot), init_jroot, sizeof(inode_t));
-	free(init_jroot);
+
 	write_blocks(0, 1, sup);
+	free(init_jroot);
 	free(sup);
 
 	// finally, initialize all entries in the FDT to have inode numbers of -1, to indicate their availability too
 	for(i=0; i<MAX_FDT_ENTRIES; i++)
 	{
-		openFileTable.entries[i].inode_num = -1;
+		openFileTable[i].inode_num = -1;
 	}
+
+	//...and set the address counter to just after the last written block address
+	diskAddressCount = waddr + 1;
 	
 }
 
@@ -182,15 +202,114 @@ int ssfs_fopen(char *name){
 		Create an entry in the file descriptor table corresponding to this information
 						
 	*/
-
+	int inode_number, readpointer, writepointer;
+	inode_number = readpointer = writepointer = -1;	
+	// initialize with invalid values. If changed, will constitue an entry in the file table
 	
 	read_blocks(rootAddr, 1, &cachedRoot);
-	
 
+	// The directory structure is in the buffer of the data block for the root directory,
+	// but in order to access it according to its structure, must copy it into a new directory struct on heap
+
+	directory_t* rootdir = malloc(sizeof(directory_t));
+	memcpy(rootdir, cachedRoot.buffer, sizeof(directory_t));
+	
+	superblock_t* sup = malloc(sizeof(block_t));
+	read_blocks(0,1,sup);
+	// now we'll look through its entries to find the filename
+		
 	int i;
+	for(i=0; i<200; i++)
+	{
+		// if the name in the entry matches the given name
+		if(strcmp(name,rootdir->entries[i].filename)==0)
+		{
+			// then use the inode number found in the root directory
+			inode_number = rootdir->entries[i].inode_num;
+			break;	
+		}
+	}
+	//if not found
+	if(inode_number == -1)
+	{
+		// then the file does not exist in the root directory. Must create
+		// start by finding the first available inode
+
+		for(i=0; i<NUM_INODES; i++)
+		{
+			if(nodes[i].size == -1)
+			{
+				inode_number = i;	// since this inode is free
+				break;
+			}		
+		}
+		/* now we want to modify inode i such that
+			 - its size is 0 instead of -1
+			 - its first direct pointer points to a new empty data block for this file
+		Then we'll write it by modifying the block it's sitting in*/
+
+		if(inode_number == -1)
+		{
+			printf("E:\t no available inodes\n");
+			return -1;
+		}
+		else
+		{
+			nodes[inode_number].size = 0;			// this inode becomes used
+			block_t* blockbuf = calloc(1, sizeof(block_t));	// this will be the file's first data block
+			nodes[inode_number].direct_ptrs[0] = diskAddressCount;	// inode's 1st direct is where we will write the new data block
+			write_blocks(diskAddressCount, 1, blockbuf);  	// write it there
+			diskAddressCount++;				// increment this so future new blocks go after
+
+			
+			/* We have only updated the inode in memory, must update it on the disk 
+			But to do that, we need to find out which block holds this inode, so we ask the superblock*/
+
+			int inode_block_addr = sup->jroot.direct_ptrs[(inode_number % NUM_DIRECT_PTRS)];
+			// ^^ this is the address of the block pointed to by the desired direct pointer in the jnode
+			
+			read_blocks(inode_block_addr, 1, blockbuf);
+
+			// But we need to know which inode in this block it is
+
+			int inode_offs = inode_number % 16;
+
+			// copy the new inode over its previous version in its block
+			// since the buffer is bytewise accessible, we access the specific inode like this:
+			memcpy(blockbuf->buffer[sizeof(inode_t)*inode_offs], &nodes[inode_number], sizeof(inode_t));
+			write_blocks(inode_block_addr, 1, blockbuf);
+			free(blockbuf);
+			
+			readpointer = writepointer = 0;	// initialize r/w pointers to the start, since file is new
+		}			
+	}
+	else // if found
+	{
+		readpointer = 0;	// read from beginning
+		int inode_block_addr = sup->jroot.direct_ptrs[(inode_number % NUM_DIRECT_PTRS)];
+		block_t* inode_block = malloc(sizeof(block_t));
+		read_blocks(inode_block_addr, 1, inode_block);
+		int inode_offs = inode_number % 16;
+
+		// now that we have the block the file's inode is in, and its offset in that block, we can point to it directly
+		inode_t* thisfiles_inode = (inode_t*)(inode_block->buffer[sizeof(inode_t)*inode_offs]);
+		int filesize = thisfiles_inode->size;
+
+		// this is the size in bytes, so we set the write pointer to this value plus 1 so it points to the first unread byte
+		writepointer = filesize + 1;
+		free(inode_block);
+	}
+
+	// from this point on it can be assumed that the file exists, root directory knows where it is, and its inode and datablocks are up to date
+	// so we can free the cached superblock and root directory struct (note, the cached root data block is global, not heap)	
+	free(sup);
+	free(rootdir);
+
+	// so now we can proceed with creating the entry in the open file table
+
 	for(i=0; i<MAX_FDT_ENTRIES; i++)
 	{
-		if (openFileTable.entries[i].inode_num == -1)
+		if (openFileTable[i].inode_num == -1)
 		{
 			// found free slot in table
 			break;		
@@ -205,10 +324,10 @@ int ssfs_fopen(char *name){
 	else
 	{
 		FDTentry_t* filentry = malloc(sizeof(FDTentry_t));
-		filentry->inode_num = // TODO: get inode number
-		filentry->readptr = // TODO: get read pointer
-		filentry->writeptr = // TODO: get write pointer
-		memcpy(&(openFileTable.entries[i]), filentry, sizeof(FDTentry_t));
+		filentry->inode_num = inode_number;
+		filentry->readptr = readpointer;
+		filentry->writeptr = writepointer;
+		memcpy(&(openFileTable[i]), filentry, sizeof(FDTentry_t));
 	}
 	
 	return i;
