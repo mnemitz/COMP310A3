@@ -206,16 +206,20 @@ int ssfs_fopen(char *name){
 	inode_number = readpointer = writepointer = -1;	
 	// initialize with invalid values. If changed, will constitue an entry in the file table
 	
+
+	printf("attempting to cache the root directory data block\n");
 	read_blocks(rootAddr, 1, &cachedRoot);
+	printf("..success. Now attempting to get directory structure\n");
 
 	// The directory structure is in the buffer of the data block for the root directory,
 	// but in order to access it according to its structure, must copy it into a new directory struct on heap
 
 	directory_t* rootdir = malloc(sizeof(directory_t));
 	memcpy(rootdir, cachedRoot.buffer, sizeof(directory_t));
-	
+	printf("got directory structure accessible. Now reading superblock...\n");
 	superblock_t* sup = malloc(sizeof(block_t));
 	read_blocks(0,1,sup);
+	printf("successfully read superblock, now finding inode for given file...\n");
 	// now we'll look through its entries to find the filename
 		
 	int i;
@@ -226,6 +230,7 @@ int ssfs_fopen(char *name){
 		{
 			// then use the inode number found in the root directory
 			inode_number = rootdir->entries[i].inode_num;
+			printf("found it!\n");
 			break;	
 		}
 	}
@@ -234,12 +239,13 @@ int ssfs_fopen(char *name){
 	{
 		// then the file does not exist in the root directory. Must create
 		// start by finding the first available inode
-
+		printf("this is a new file! Looking for an avalable inode...\n");
 		for(i=0; i<NUM_INODES; i++)
 		{
 			if(nodes[i].size == -1)
 			{
 				inode_number = i;	// since this inode is free
+				printf("inode number %d is free\n",i);
 				break;
 			}		
 		}
@@ -254,10 +260,13 @@ int ssfs_fopen(char *name){
 			return -1;
 		}
 		else
-		{
+		{			
 			nodes[inode_number].size = 0;			// this inode becomes used
+			printf("successfully modified in-memory inode\n");			
 			block_t* blockbuf = calloc(1, sizeof(block_t));	// this will be the file's first data block
+			printf("successfully calloc'd data block to write\n");			
 			nodes[inode_number].direct_ptrs[0] = diskAddressCount;	// inode's 1st direct is where we will write the new data block
+			printf("inode %d is set up, writing the data block.", inode_number);		
 			write_blocks(diskAddressCount, 1, blockbuf);  	// write it there
 			diskAddressCount++;				// increment this so future new blocks go after
 
