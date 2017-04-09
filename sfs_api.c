@@ -261,11 +261,11 @@ int ssfs_fopen(char *name){
 		}
 		else
 		{			
-			nodes[inode_number].size = 0;			// this inode becomes used
+			nodes[inode_number-1].size = 0;			// this inode becomes used
 			printf("successfully modified in-memory inode\n");			
 			block_t* blockbuf = calloc(1, sizeof(block_t));	// this will be the file's first data block
 			printf("successfully calloc'd data block to write\n");			
-			nodes[inode_number].direct_ptrs[0] = diskAddressCount;	// inode's 1st direct is where we will write the new data block
+			nodes[inode_number-1].direct_ptrs[0] = diskAddressCount;	// inode's 1st direct is where we will write the new data block
 			printf("inode %d is set up, writing the data block.", inode_number);		
 			write_blocks(diskAddressCount, 1, blockbuf);  	// write it there
 			diskAddressCount++;				// increment this so future new blocks go after
@@ -285,7 +285,9 @@ int ssfs_fopen(char *name){
 
 			// copy the new inode over its previous version in its block
 			// since the buffer is bytewise accessible, we access the specific inode like this:
-			memcpy(blockbuf->buffer[sizeof(inode_t)*inode_offs], &nodes[inode_number], sizeof(inode_t));
+
+			inode_t* inode_in_block = &(blockbuf->buffer[sizeof(inode_t)*inode_offs]);
+			memcpy(inode_in_block, &nodes[inode_number], sizeof(inode_t));
 			write_blocks(inode_block_addr, 1, blockbuf);
 			free(blockbuf);
 			
