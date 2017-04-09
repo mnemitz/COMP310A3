@@ -202,6 +202,7 @@ int ssfs_fopen(char *name){
 		Create an entry in the file descriptor table corresponding to this information
 						
 	*/
+	printf("--Attempting to open file:\t%s\n", name); 
 	int inode_number, readpointer, writepointer;
 	inode_number = readpointer = writepointer = -1;	
 	// initialize with invalid values. If changed, will constitue an entry in the file table
@@ -261,11 +262,11 @@ int ssfs_fopen(char *name){
 		}
 		else
 		{			
-			nodes[inode_number-1].size = 0;			// this inode becomes used
+			nodes[inode_number].size = 0;			// this inode becomes used
 			printf("successfully modified in-memory inode\n");			
 			block_t* blockbuf = calloc(1, sizeof(block_t));	// this will be the file's first data block
 			printf("successfully calloc'd data block to write\n");			
-			nodes[inode_number-1].direct_ptrs[0] = diskAddressCount;	// inode's 1st direct is where we will write the new data block
+			nodes[inode_number].direct_ptrs[0] = diskAddressCount;	// inode's 1st direct is where we will write the new data block
 			printf("inode %d is set up, writing the data block.", inode_number);		
 			write_blocks(diskAddressCount, 1, blockbuf);  	// write it there
 			diskAddressCount++;				// increment this so future new blocks go after
@@ -349,7 +350,12 @@ int ssfs_fclose(int fileID){
 		Remove the file descriptor table entry at the specified index 
 		....by copying a blank struct into that 'row', with a size=-1 flag to indicate its avalability
 	*/
-    return 0;
+
+	FDTentry_t* blank_entry = calloc(1,sizeof(FDTentry_t));
+	blank_entry->inode_number = -1;
+	memcpy( &(openFileTable[fileID]), blank_entry, sizeof(FDTentry_t) );
+	free(blank_entry);
+	return 0;
 }
 int ssfs_frseek(int fileID, int loc){
 	/*
