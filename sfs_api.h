@@ -1,6 +1,7 @@
 //Functions you should implement. 
 //Return -1 for error besides mkssfs
 void mkssfs(int fresh);
+int get_unused_block_index();
 int ssfs_fopen(char *name);
 int ssfs_fclose(int fileID);
 int ssfs_frseek(int fileID, int loc);

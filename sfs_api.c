@@ -10,6 +10,21 @@
 #define MAX_FDT_ENTRIES 16
 #define MAX_NAMESIZE 16
 
+/*
+TO THE GRADER:
+
+After hours of debugging, I still can't seem to get my reads working, although I'm pretty sure that the writes are going through without
+a problem.
+
+
+*/
+
+
+
+
+
+
+
 typedef struct _inode_t
 {
 	int size;
@@ -187,7 +202,57 @@ void mkssfs(int fresh)
 	}
 }
 
+// Returns the index of the first found unused block according to the FBM. Sets it to be used in the process.
+int get_unused_block_index()
+{
+	/*We want the index of the first  1 in the bitmap , but the buffer is only byte accessible
+			   so, we're looking for the first byte != 0x00*/
+			char* nonzero_byte = NULL;
+			int i;
+			for(i=0; i<BLOCK_SIZE; i++)
+			{
+				if(cachedFBM.buffer[i] != 0x00)
+				{
+					// ... then this byte has a 1 in it, meaning it contains the index of a free block
+					nonzero_byte = (char*)&(cachedFBM.buffer[i]);
+					break;
+				}
+			}
 
+			// counting bits left to right, we start from the first nonzero byte, and gradually increase to find the bit
+			int first_unused_byte_index = i;
+			int first_unused_bit_index = 8*i;
+			if(nonzero_byte == NULL)
+			{
+				printf("E:\t Looks like the FBM is made of 0's, so no free blocks, or there's a problem\n");
+				return -1;
+			}
+				// need to find its closest power of 2 to find index of first '1'
+			unsigned char foo = 0x80;	// = '1000 0000'
+			for(i=0; i< 8; i++)
+			{
+				if(foo > *nonzero_byte)
+				{
+					// move forward 1 bit
+					first_unused_bit_index++;
+					// then divide foo by 2 and go again
+					foo >>= 1;
+				}
+				else
+				{
+					break;
+				}
+			}
+			// find the offset of the first found '1' within its byte
+			int unused_block_offs = first_unused_bit_index - 8*first_unused_byte_index;
+
+			// the bit at this index was 1 since this block was unused, we set it to 0 in this new byte
+			unsigned char updated_byte = *nonzero_byte & ~(1 << unused_block_offs);
+			memcpy(&(cachedFBM.buffer[first_unused_byte_index]), &updated_byte, sizeof(unsigned char));
+			write_blocks(1,1,&cachedFBM);
+
+	return first_unused_bit_index;
+}
 
 int ssfs_fopen(char *name){
 
@@ -272,61 +337,15 @@ int ssfs_fopen(char *name){
 
 			// now we need to cache the FBM from the disk to see where we can write
 
-			/*We want the index of the first  1 in the bitmap , but the buffer is only byte accessible
-			   so, we're looking for the first byte != 0x00*/
 
-			char* nonzero_byte = NULL;
-			for(i=0; i<BLOCK_SIZE; i++)
-			{
-				if(cachedFBM.buffer[i] != 0x00)
-				{
-					// ... then this byte has a 1 in it, meaning it contains the index of a free block
-					nonzero_byte = (char*)&(cachedFBM.buffer[i]);
-					break;
-				}
-			}
-
-			// counting bits left to right, we start from the first nonzero byte, and gradually increase to find the bit
-			int first_unused_byte_index = i;
-			int first_unused_bit_index = 8*i;
-			if(nonzero_byte == NULL)
-			{
-				printf("E:\t Looks like the FBM is made of 0's, so no free blocks, or there's a problem\n");
-				free(blockbuf);
-				return -1;
-			}
-				// need to find its closest power of 2 to find index of first '1'
-			unsigned char foo = 0x80;	// = '1000 0000'
-			for(i=0; i< 8; i++)
-			{
-				if(foo > *nonzero_byte)
-				{
-					// move forward 1 bit
-					first_unused_bit_index++;
-					// then divide foo by 2 and go again
-					foo >>= 1;
-				}
-				else
-				{
-					break;
-				}
-			}
-
+			int first_unused_bit_index = get_unused_block_index();
 
 			// so the value of first_unused_bit_index actually is the address of an available writeable block
 
 			nodes[inode_number].direct_ptrs[0] = first_unused_bit_index;	// inode's 1st direct is where we will write the new data block
 			printf("inode %d is set up, writing the data block.", inode_number);
 			write_blocks(first_unused_bit_index, 1, blockbuf);  	// write it there
-			// THe file's very first data block has been written! now must update the FBM and write it back to disk
-
-			// find the offset of the first found '1' within its byte
-			int unused_block_offs = first_unused_bit_index - 8*first_unused_byte_index;
-
-			// the bit at this index was 1 since this block was unused, we set it to 0 in this new byte
-			unsigned char updated_byte = *nonzero_byte | 1 << unused_block_offs;
-			memcpy(&(cachedFBM.buffer[first_unused_byte_index]), &updated_byte, sizeof(unsigned char));
-			write_blocks(1,1,&cachedFBM);
+			// THe file's very first data block has been written!
 
 
 			/* So far, we have only updated the inode in memory, must update it on the disk
@@ -426,6 +445,11 @@ int ssfs_frseek(int fileID, int loc)
 	/*
 		Update the fle table entry at this index by setting its read pointer to loc
 	*/
+	if(loc < 0)
+	{
+		printf("E:\t negative seek invalid\n");
+		return -1;
+	}
 	if(openFileTable[fileID].inode_num == -1)
 	{
 		printf("E:\t File %d not currently open\n", fileID);
@@ -458,7 +482,6 @@ int ssfs_fwseek(int fileID, int loc)
 	return 0;
 }
 int ssfs_fwrite(int fileID, char *buf, int length){
-
 	/*
 		Look at the write pointer for the entry in the file table at this ID index
 		Read the block with this file's inode in it	(accessible from the (inode no. / 16)-th direct pointer in the j-node)
@@ -468,8 +491,7 @@ int ssfs_fwrite(int fileID, char *buf, int length){
 		number_of_blocks_needed_for_write = strlen(buf) / BLOCK_SIZE (1024)
 
 	*/
-	int num_byte_towrite = strlen(buf);
-
+	int ret = -1;
 	if(fileID < 0)
 	{
 		printf("E:\t Invalid file desc.\n");
@@ -484,21 +506,147 @@ int ssfs_fwrite(int fileID, char *buf, int length){
 	}
 	/*Ultimately, we're trying to find the data block which holds the byte indexed by the write pointer
 	To do this, first we need to find the inode itself, using the cached superblock*/
+	printf("--------------\n Attempting to write %d bytes to file desc. %d \n -----------------------\n",length, fileID);
+	superblock_t* cachedSuperPointer = (superblock_t*) &cachedSuperblock;
 
-	superblock_t* cachedSuperPointer = (superblock_t*) &cachedSuperBlock;
 	// access right direct pointer from j-node, and get the address of the block it points to:
-	int inode_block_addr = cachedSuperPointer->jroot.direct_ptrs[(thisfile->inode_num)/NUM_DIRECT_POINTERS];
+	int inode_block_addr = cachedSuperPointer->jroot.direct_ptrs[(thisfile->inode_num)/NUM_DIRECT_PTRS];
 	block_t* nodeblock = malloc(sizeof(block_t));
 	read_blocks(inode_block_addr, 1, nodeblock);
+	printf("Got block with file's inode\n");
+
 	// now we have that block of inodes, need to select the correct inode from it
-	inode_t* this_files_inode =
+	inode_t* this_files_inode = (inode_t*) &(nodeblock->buffer[(thisfile->inode_num)%16]);
 
+	// now that we can access the file's inode, we need to find the data block corresponding to our current write location
+	// each data block in the inode is 1024 bytes, so we should see how many blocks the buffer to write requires:
+	printf("Got this file's inode directly \n");
 
+	// we also need to know where to start, i.e. which block the write pointer directs us to:
+	int writeptr_blockoffs = thisfile->writeptr / BLOCK_SIZE;
+	int initblock_diskaddr = this_files_inode->direct_ptrs[writeptr_blockoffs];
+	int writeptr_byte_offs = thisfile->writeptr % BLOCK_SIZE;
+
+	int number_bytes_spilling = length - (BLOCK_SIZE - writeptr_byte_offs + 1);
+
+//	|{x,x+1,...,1024}| = 1024 - x + 1	<<<---	this counting explains 		this^
+
+	block_t* writebuf  = malloc(sizeof(block_t));
+
+	if(number_bytes_spilling <= 0)
+	{
+		// write the buffer into that one block
+		printf("No bytes spilling, will write whole buffer in existing block\n");
+		read_blocks(initblock_diskaddr, 1, writebuf->buffer);
+		memcpy(&(writebuf->buffer[writeptr_byte_offs]), buf, length);
+		ret = (int) length;
+	}
+	else
+	{
+		// allocate (number_bytes_spilling / BLOCK_SIZE) + 1 blocks from the inode and write to them sequentially.
+		// If we run out of direct pointers, print an error and return the number of bytes written
+		int num_extra_blocks = (number_bytes_spilling / BLOCK_SIZE) + 1;
+		printf("Buffer spills %d bytes, must allocate %d new blocks to fit\n", number_bytes_spilling, num_extra_blocks);
+
+		// first copy what we can into the last available data block
+                read_blocks(initblock_diskaddr, 1, writebuf->buffer);
+                memcpy(writebuf->buffer[writeptr_byte_offs], buf, length-number_bytes_spilling);
+
+		// initialize ret to have written 0 bytes, will increment as we copy bytes
+		ret = 0;
+		write_blocks(initblock_diskaddr, 1, writebuf->buffer);
+		ret += length-number_bytes_spilling;
+		buf += length-number_bytes_spilling;	// move buf ahead past what was already written
+		// now we make blocks to hold the remaining data in writeable form
+
+		block_t** spillover_blocks = calloc(num_extra_blocks, sizeof(block_t));
+		int num_bytes_in_last = number_bytes_spilling % BLOCK_SIZE;
+		int j=0;
+		for(int j=0; j<num_extra_blocks-1; j++)
+		{
+			memcpy(spillover_blocks[j],buf,BLOCK_SIZE);
+			buf += BLOCK_SIZE;
+			ret += BLOCK_SIZE;
+		}
+		memcpy(spillover_blocks[j],buf,num_bytes_in_last);
+		ret += num_bytes_in_last;
+
+		// then go through the remaining direct pointers, giving each of them a new data block's worth of the buffer
+		int newblock_addr = -1;
+		for(j=0; j<NUM_DIRECT_PTRS && j<num_extra_blocks; j++)
+		{
+			newblock_addr = get_unused_block_index();
+			this_files_inode->direct_ptrs[j] = newblock_addr;
+			write_blocks(newblock_addr, 1, spillover_blocks[j]);
+
+		}
+		if(newblock_addr == -1)
+		{
+			printf("E:\t could not find free block\n");
+			return -1;
+		}
+
+	}
+	free(writebuf);
+	// update the block of inodes after all these changes
+	write_blocks(inode_block_addr, 1, nodeblock);
 	free(nodeblock);
-	return 0;
+	thisfile->curr_numbytes += ret;
+	thisfile->writeptr += ret;
+	return ret;
 }
 int ssfs_fread(int fileID, char *buf, int length){
-    return 0;
+	if(fileID<0)
+	{
+		printf("E:\t invalid file desc.\n");
+		return -1;
+	}
+
+	FDTentry_t* thisfile = &(openFileTable[fileID]);
+	if(thisfile->inode_num == -1)
+	{
+		printf("E:\t file %d not open.\n",fileID);
+		return -1;
+	}
+
+	printf("--------------\n Attempting to read %d bytes to file desc. %d \n -----------------------\n",length, fileID);
+        superblock_t* cachedSuperPointer = (superblock_t*) &cachedSuperblock;
+	int ret = -1;
+
+        // access right direct pointer from j-node, and get the address of the block it points to:
+        int inode_block_addr = cachedSuperPointer->jroot.direct_ptrs[(thisfile->inode_num)/NUM_DIRECT_PTRS];
+        block_t* nodeblock = malloc(sizeof(block_t));
+        read_blocks(inode_block_addr, 1, nodeblock);
+        printf("Got block with file's inode\n");
+
+        // now we have that block of inodes, need to select the correct inode from it
+        inode_t* this_files_inode = (inode_t*) &(nodeblock->buffer[(thisfile->inode_num)%16]);
+
+        // now that we can access the file's inode, we need to find the data block corresponding to our current read location
+        printf("Got this file's inode directly \n");
+        // we also need to know where to start, i.e. which block the read pointer directs us to:
+        int readptr_blockoffs = thisfile->readptr / BLOCK_SIZE;
+        int initblock_diskaddr = this_files_inode->direct_ptrs[readptr_blockoffs];
+        int readptr_byte_offs = thisfile->readptr % BLOCK_SIZE;
+	char* retbuf = malloc(length*sizeof(char));
+	block_t* readbuf = malloc(sizeof(block_t));
+	read_blocks(initblock_diskaddr, 1, readbuf);
+	memcpy(retbuf,&(readbuf->buffer[readptr_byte_offs]), BLOCK_SIZE - readptr_byte_offs + 1);
+	ret += BLOCK_SIZE - readptr_byte_offs + 1;
+	int nextblock_addr = -1;
+	int i = readptr_blockoffs+1;
+	while(ret <= length)
+	{
+		nextblock_addr = this_files_inode->direct_ptrs[i];
+		read_blocks(nextblock_addr,1,readbuf->buffer);
+		memcpy(retbuf[ret], readbuf->buffer, BLOCK_SIZE);
+		ret += BLOCK_SIZE;
+	}
+
+	free(readbuf);
+	memcpy(buf, retbuf, length*sizeof(char));
+	free(retbuf);
+	return ret;
 }
 int ssfs_remove(char *file){
 	/*
@@ -512,7 +660,6 @@ int ssfs_remove(char *file){
 			 (inode number) / 16 gives the right block, as indexed by the j-node
 			 (inode number) % 16 tells us which inode we want in that block
 
-		So we read from address
 
 	*/
     return 0;
